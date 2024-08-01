@@ -1,0 +1,235 @@
+<html><head><base href="https://websimengine.com/linear-regression-glowing-points-dark/">
+<title>Linear Regression Simulator - Glowing Points</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #001f3f;
+        color: #ffffff;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .header {
+        width: 100%;
+        background-color: #003366;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    .controls {
+        flex: 1;
+        min-width: 300px;
+        background-color: #002b56;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        margin-right: 20px;
+    }
+    .output {
+        flex: 2;
+        min-width: 500px;
+        background-color: #002b56;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .slider {
+        width: 100%;
+        margin: 10px 0;
+        background: #003366;
+    }
+    label {
+        display: block;
+        margin-top: 15px;
+        color: #00bfff;
+        font-weight: bold;
+    }
+    .value-display {
+        display: inline-block;
+        width: 50px;
+        text-align: right;
+        margin-left: 10px;
+        color: #00bfff;
+    }
+    h2 {
+        color: #00bfff;
+        border-bottom: 2px solid #00bfff;
+        padding-bottom: 10px;
+    }
+    @keyframes glow {
+        0% { opacity: 0.5; }
+        50% { opacity: 1; }
+        100% { opacity: 0.5; }
+    }
+    .glow-point {
+        animation: glow 2s infinite;
+    }
+</style>
+</head>
+<body>
+    <div class="header">
+        <h1>Linear Regression Simulator - Glowing Points</h1>
+    </div>
+    <div class="container">
+        <div class="controls">
+            <h2>Control Panel</h2>
+            <label for="a">Slope (a):</label>
+            <input type="range" id="a" class="slider" min="-50" max="50" value="1" step="0.1">
+            <span id="a-value" class="value-display"></span>
+
+            <label for="n">Total Points (n):</label>
+            <input type="range" id="n" class="slider" min="100" max="1000" value="500" step="10">
+            <span id="n-value" class="value-display"></span>
+
+            <label for="c">Noise Factor (c):</label>
+            <input type="range" id="c" class="slider" min="10" max="100" value="50" step="1">
+            <span id="c-value" class="value-display"></span>
+
+            <label for="num-points">Display Points:</label>
+            <input type="range" id="num-points" class="slider" min="10" max="1000" value="500" step="10">
+            <span id="num-points-value" class="value-display"></span>
+        </div>
+        <div class="output">
+            <h2>Simulation Results</h2>
+            <div id="plot"></div>
+        </div>
+    </div>
+
+<script>
+const aSlider = document.getElementById('a');
+const nSlider = document.getElementById('n');
+const cSlider = document.getElementById('c');
+const numPointsSlider = document.getElementById('num-points');
+const aValue = document.getElementById('a-value');
+const nValue = document.getElementById('n-value');
+const cValue = document.getElementById('c-value');
+const numPointsValue = document.getElementById('num-points-value');
+
+function updateValue(slider, valueSpan) {
+    valueSpan.textContent = slider.value;
+}
+
+aSlider.oninput = () => updateValue(aSlider, aValue);
+nSlider.oninput = () => {
+    updateValue(nSlider, nValue);
+    numPointsSlider.max = nSlider.value;
+    if (parseInt(numPointsSlider.value) > parseInt(nSlider.value)) {
+        numPointsSlider.value = nSlider.value;
+    }
+    updateValue(numPointsSlider, numPointsValue);
+};
+cSlider.oninput = () => updateValue(cSlider, cValue);
+numPointsSlider.oninput = () => updateValue(numPointsSlider, numPointsValue);
+
+updateValue(aSlider, aValue);
+updateValue(nSlider, nValue);
+updateValue(cSlider, cValue);
+updateValue(numPointsSlider, numPointsValue);
+
+function generateData() {
+    const a = parseFloat(aSlider.value);
+    const n = parseInt(nSlider.value);
+    const c = parseFloat(cSlider.value);
+    const b = 0; // Intercept
+
+    const x = Array.from({length: n}, () => Math.random() * 20 - 10);
+    const y = x.map(xi => a * xi + b + c * (Math.random() * 2 - 1));
+
+    return {x, y};
+}
+
+function linearRegression(x, y) {
+    const n = x.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (let i = 0; i < n; i++) {
+        sumX += x[i];
+        sumY += y[i];
+        sumXY += x[i] * y[i];
+        sumX2 += x[i] * x[i];
+    }
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    return {slope, intercept};
+}
+
+function updatePlot() {
+    const {x, y} = generateData();
+    const {slope, intercept} = linearRegression(x, y);
+
+    const numPointsToDisplay = Math.min(parseInt(numPointsSlider.value), x.length);
+    const displayedX = x.slice(0, numPointsToDisplay);
+    const displayedY = y.slice(0, numPointsToDisplay);
+
+    const trace1 = {
+        x: displayedX,
+        y: displayedY,
+        mode: 'markers',
+        type: 'scatter',
+        name: 'Data Points',
+        marker: { 
+            color: '#00bfff',
+            size: 8,
+            symbol: 'circle',
+            line: {
+                color: '#ffffff',
+                width: 2
+            },
+            opacity: 0.8
+        },
+        customdata: Array(displayedX.length).fill('glow-point')
+    };
+
+    const xLine = [-10, 10];
+    const yLine = xLine.map(xi => slope * xi + intercept);
+
+    const trace2 = {
+        x: xLine,
+        y: yLine,
+        mode: 'lines',
+        type: 'scatter',
+        name: 'Regression Line',
+        line: {color: '#ff4500', width: 3}
+    };
+
+    const layout = {
+        title: 'Linear Regression Simulation',
+        xaxis: {title: 'X Axis', gridcolor: '#ffffff20', zerolinecolor: '#ffffff40'},
+        yaxis: {title: 'Y Axis', gridcolor: '#ffffff20', zerolinecolor: '#ffffff40'},
+        font: { family: 'Arial, sans-serif', color: '#ffffff' },
+        legend: { x: 0, y: 1 },
+        hovermode: 'closest',
+        plot_bgcolor: '#001f3f',
+        paper_bgcolor: '#001f3f'
+    };
+
+    const config = {
+        responsive: true
+    };
+
+    Plotly.newPlot('plot', [trace1, trace2], layout, config);
+
+    // Add glow effect
+    const plotDiv = document.getElementById('plot');
+    plotDiv.on('plotly_afterplot', function() {
+        const points = document.querySelectorAll('.scatter .point');
+        points.forEach(point => {
+            point.classList.add('glow-point');
+        });
+    });
+}
+
+aSlider.onchange = updatePlot;
+nSlider.onchange = updatePlot;
+cSlider.onchange = updatePlot;
+numPointsSlider.onchange = updatePlot;
+
+updatePlot();
+</script>
+</body></html>
